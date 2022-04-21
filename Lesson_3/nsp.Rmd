@@ -1,0 +1,38 @@
+---
+title: "Namespaces example"
+---
+
+```{r}
+rm(list=ls())
+ls()
+sd()
+```
+
+sd() is defined in terms of var(), so you might worry that the result of sd() would be affected by any function called var() either in the global environment, or in one of the other attached packages. 
+
+R avoids this problem by taking advantage of the function versus binding environment described above. Every function in a package is associated with a pair of environments: the package environment, which you learned about earlier, and the namespace environment.
+
+```{r}
+var(c(1,2,3,4,5,6,7,8,9,10))
+?var
+```
+
+
+```{r}
+var <- function(x) mean(x)
+
+var(c(1,2,3,4,5,6,7,8,9,10))
+
+
+sd(c(1,2,3,4,5,6,7,8,9,10))
+rm(var)
+```
+```{r}
+sd(c(1,2,3,4,5,6,7,8,9,10))
+sd <- function(...) 1
+var <- function(x) mean(x)
+ls()
+stats::sd(c(1,2,3,4,5,6,7,8,9,10))
+```
+
+
