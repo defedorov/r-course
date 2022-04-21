@@ -1,0 +1,308 @@
+---
+title: "Looping functions"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+### lapply()
+
+The lapply() function does the following simple series of operations:
+
+1. it loops over a list, iterating over each element in that list
+2. it applies a function to each element of the list (a function that you specify)
+3. and returns a list (the l is for “list”).
+
+This function takes three arguments: 
+1. a list X; 
+2. a function (or the name of a function) FUN;
+3. other arguments via its ... argument. 
+
+If X is not a list, it will be coerced to a list using **as.list()**.
+
+Note that the actual looping is done internally in C code for efficiency reasons.
+
+It’s important to remember that lapply() always returns a list, regardless of the class of the input.
+
+ex1
+
+```{r}
+x <- list(a = 1:5, b = rnorm(100))
+x$a
+x$b
+
+lapply(x, mean)
+```
+
+ex2
+
+
+let`s try to understand how we pass arguments
+
+```{r}
+?runif
+?lapply
+```
+
+```{r}
+x <- 1:4
+lapply(x, runif)
+```
+
+```{r}
+x <- 1:4
+lapply(x, runif, min = 0, max = 10)
+```
+
+The lapply() function and its friends make heavy use of anonymous functions.
+
+```{r}
+x <- list(a = matrix(1:4, 2, 2), b = matrix(1:6, 3, 2))
+x
+
+lapply(x, function(mat) { mat[,1] })
+```
+
+You can put an arbitrary complicated function definition inside lapply(), but if it's going to be more complicated, it' sprobably a better idea to define the function separately.
+
+Another rule is if you want to use fuction many times define it separately if you want it only once for this particular situation use anonimous function.
+
+### sapply()
+
+The sapply() function behaves similarly to lapply(); the only real difference is in the return value. sapply() will try to simplify the result of lapply() if possible. Essentially, sapply() calls lapply() on its input and then applies the following algorithm:
+
+* If the result is a list where every element is length 1, then a vector is returned
+* If the result is a list where every element is a vector of the same length (> 1), a matrix is returned.
+* If it can’t figure things out, a list is returned
+
+```{r}
+x <- list(a = 1:4, b = rnorm(10), c = rnorm(20, 1), d = rnorm(100, 5))
+lapply(x, mean)
+```
+
+```{r}
+sapply(x, mean)
+```
+
+### split()
+
+It is not a looping function but is very handy when use in conjunction with looping functions.
+
+```{r}
+str(split)
+```
+
+* x is a vector, list or data frame
+* f is a factor (or coerced to one) or a list of factors
+* drop indicates whether empty factors levels should be dropped
+
+
+ex 1
+
+```{r}
+x <- c(rnorm(10), runif(10), rnorm(10,1))
+f <- gl(3,10)
+split(x,f)
+sapply(split(x, f), mean)
+```
+
+ex 2 splitting a data frame
+
+```{r}
+library(datasets)
+head(airquality)
+```
+
+```{r}
+s <- split(airquality, airquality$Month)
+lapply(s, function(x) colMeans(x[,c('Ozone', 'Solar.R', 'Wind')]))
+```
+
+```{r}
+sapply(s, function(x) colMeans(x[,c('Ozone', 'Solar.R', 'Wind')]))
+```
+
+```{r}
+sapply(s, function(x) colMeans(x[,c('Ozone', 'Solar.R', 'Wind')], na.rm = TRUE))
+```
+
+ex 3 splitting on more than one level
+
+```{r}
+x <- rnorm(10)
+f1 <- gl(2, 5)
+f2 <- gl(5, 2)
+f1
+f2
+interaction(f1,f2)
+str(split(x, list(f1,f2)))
+str(split(x, list(f1,f2), drop = T))
+```
+
+```{r}
+head(airquality)
+```
+```{r}
+s <- split(airquality, list(airquality$Month, airquality$Day))
+
+sapply(s, function(x) if (length(x[,'Temp']) != 0) x[,'Temp'] else 0)
+```
+
+### tapply()
+
+tapply() is used to apply a function over subsets of a vector. It can be thought of as a combination of split() and sapply() for **vectors only**.
+
+```{r}
+str(tapply)
+```
+* X is a vector
+* INDEX is a factor or a list of factors (or else they are coerced to factors)
+* FUN is a function to be applied
+* ... contains other arguments to be passed FUN
+* simplify, should we simplify the result?
+
+```{r}
+x <- c(rnorm(10), runif(10), rnorm(10, 1))
+f <- gl(3, 10)
+
+tapply(x, f, mean) # output simplified vector
+
+tapply(x, f, range) # output list
+
+tapply(x, f, mean, simplify = FALSE)
+```
+
+### apply()
+
+The apply() function is used to a evaluate a function (often an anonymous one) over the margins of an array. It is most often used to apply a function to the rows or columns of a matrix (which is just a 2-dimensional array). 
+
+However, it can be used with general arrays, for example, to take the average of an array of matrices. Using apply() is not really faster than writing a loop, but it works in one line and is highly compact.
+
+```{r}
+str(apply)
+```
+
+* X is an array
+* MARGIN is an integer vector indicating which margins should be “retained”.
+* FUN is a function to be applied
+* ... is for other arguments to be passed to FUN
+
+```{r}
+x <- matrix(rnorm(200), 20, 10)
+apply(x, 2, mean)  ## Take the mean of each column
+```
+
+```{r}
+apply(x, 1, sum)   ## Take the mean of each row
+```
+
+The MARGIN argument essentially indicates to apply() which dimension of the array you want to preserve or retain.
+
+1 is for rows
+
+2 is for columns
+
+For the special case of column/row sums and column/row means of matrices, we have some useful shortcuts.
+
+* rowSums = apply(x, 1, sum)
+* rowMeans = apply(x, 1, mean)
+* colSums = apply(x, 2, sum)
+* colMeans = apply(x, 2, mean)
+
+The shortcut functions are heavily optimized and hence are much faster, but you probably won’t notice unless you’re using a large matrix. Another nice aspect of these functions is that they are a bit more descriptive. It’s arguably more clear to write colMeans(x) in your code than apply(x, 2, mean).
+
+```{r}
+a <- array(rnorm(200 * 200 * 100), c(200, 200, 100))
+```
+
+```{r}
+now <<- Sys.time()
+
+res <- apply(a, c(1, 2), mean)
+
+difftime(Sys.time(), now)
+```
+
+```{r}
+now <<- Sys.time()
+
+res <- rowMeans(a, dims = 2)
+
+difftime(Sys.time(), now)
+```
+
+### mapply()
+
+The mapply() function is a multivariate apply of sorts which applies a function in parallel over a set of arguments. Recall that lapply() and friends only iterate over a single R object. What if you want to iterate over multiple R objects in parallel? This is what mapply() is for.
+
+```{r}
+str(mapply)
+```
+* FUN is a function to apply
+* ... contains R objects to apply over
+* MoreArgs is a list of other arguments to FUN.
+* SIMPLIFY indicates whether the result should be simplified
+
+ex1
+
+```{r}
+list(rep(1, 4), rep(2, 3), rep(3, 2), rep(4, 1))
+```
+
+```{r}
+mapply(rep, 1:4, 4:1)
+```
+
+ex 2 Simulating random normal variables
+
+```{r}
+str(rnorm)
+rnorm(5, 1, 2)
+rnorm(1:5, 1:5, 2)
+```
+```{r}
+mapply(rnorm, 1:5, 1:5, 2)
+# the same as:
+list(rnorm(1, 1, 2), rnorm(2, 2, 2),
+      rnorm(3, 3, 2), rnorm(4, 4, 2),
+      rnorm(5, 5, 2))
+```
+
+### Function vectorization
+
+The mapply() function can be use to automatically “vectorize” a function. What this means is that it can be used to take a function that typically only takes single arguments and create a new function that can take vector arguments. This is often needed when you want to plot functions.
+
+$$
+\sum_{i=1}^{n}{(x_i - \mu)^2/\sigma^2}
+$$
+```{r}
+sumsq <- function(mu, sigma, x) {
+         sum(((x - mu) / sigma)^2)
+}
+```
+
+```{r}
+x <- rnorm(100) 
+sumsq(1:10, 1:10, x)
+```
+
+```{r}
+mapply(sumsq, 1:10, 1:10, MoreArgs = list(x = x))
+```
+
+There’s even a function in R called Vectorize() that automatically can create a vectorized version of your function. So we could create a vsumsq() function that is fully vectorized as follows.
+
+```{r}
+vsumsq <- Vectorize(sumsq, c("mu", "sigma"))
+vsumsq(1:10, 1:10, x)
+```
+
+### Summary
+
+* The loop functions in R are very powerful because they allow you to conduct a series of operations on data using a compact form
+
+* The operation of a loop function involves iterating over an R object (e.g. a list or vector or matrix), applying a function to each element of the object, and the collating the results and returning the collated results.
+
+* Loop functions make heavy use of anonymous functions, which exist for the life of the loop function but are not stored anywhere
+
+* The split() function can be used to divide an R object in to subsets determined by another variable which can subsequently be looped over using loop functions.
