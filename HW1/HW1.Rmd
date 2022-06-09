@@ -1,4 +1,5 @@
 ---
+author: "Denis Fedorov"
 title: "HW 1"
 output:
   pdf_document: default
@@ -19,24 +20,28 @@ $$
  y = |sin(2x)|, x \in [-{pi\over 2},{pi\over 2}]
 $$
 
-using the Monte Carlo method.
-
-You can read about this method in any resource.
-
-For examplle: [www.mathonweb.com/entrtain/monte/t_monte.html](https://www.mathonweb.com/entrtain/monte/t_monte.html)
-
 This is a graphical representation of the equations:
 
 ```{r fig.align="center", echo = FALSE,fig.width = 14,fig.height=10}
-X <- seq(from=-pi/2, to=pi/2, length.out=100)
+X <- seq(from=-pi/2, to=pi/2, length.out=300)
 Y <- 2*abs(X) - pi
 Y <- c(Y, abs(sin(2*X)))
 X <- c(X, X)
 qplot(X, Y)
 ```
 
-To generate random dots you may use **runif** function,
+```{r}
+n <- 100000
+hits <- 0
+for (i in seq(1,n)) {
+  x <- runif(1,-pi/2,pi/2)
+  y <- runif(1,-pi,2)
+  if (y >= 2*abs(x)-pi && y <= abs(sin(2*x))){
+    hits <- hits + 1
+  }
+}
+percentage=hits/n
 
-Use help function "?runif" to understand how it works.
+cat("Area of shape is", pi*(pi+2)*percentage)
 
-
+```
