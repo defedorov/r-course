@@ -1,129 +1,113 @@
 ---
-title: "R Notebook"
+author: "Denis Fedorov"
+title: "HW 3"
 output:
   pdf_document: default
   html_notebook: default
+  html_document:
+    df_print: paged
 ---
-
-Dear students,
-this is your third homework.
-
-### Sinteny blocks by gene homology.
-
-Studying comparative genomics we are often interesting in visualisation of 
-synteny blocks to look at structural variations between different species.
-
-If you are not familiar with this concept you can start with [en.wikipedia.org/wiki/Synteny](https://en.wikipedia.org/wiki/Synteny)
-
-There are different ways to construct synteny blocks. We can use pairwise 
-alignments of genomes, complicated structures of genome fragmentation and so on.
-
-In this assignment we want to construct synteny using genes homology.
-
-In this homework I want to teach you how to:
-* work with real data, how to clean it and reshape for you purposes. 
-* work with unfamiliar R libraries, how to use its documentation to achieve result.
-* work with aditional data sources
-
-So the goal of this work is to create a .png picture of gene synteny between 
-chromosomal scaffolds of two mosquito species Anopheles Gambiae ZANU and 
-Anopheles Arabiensis DONGOLA.
-
-Here you can see the example of such figure for another pair of mosquitoes ZANU and
-PEST strains of An.Gambiae:
-
-![synteny](./synt.png)
-
-So here we have two stripes of mosquitoes chromosomes X, 2 and 3 (they have only 3)
-and between them we have blue and red lines. Each line is for pair of genes that are homologus.
-
-It is blue when in both mosquitoes genes are in the same direction and red in opposit.
-
-Your task is to construct the same picture from input data using RIdeogram package.
-
-Please find how to install it and documentation by yourself.
-
-### Input description
-
-First genome (ZANU) is a new assembled genome and in purpose to construct synteny
-it was annotated using annotation from the second An.Arabiensis DONGOLA genome (with GeMoMa pipeline)
-
-1. Anopheles Arabiensis DONGOLA genome description is in NCBI database.
-
-There you can find mapping between chromosome names and sequence IDs, and 
-information about chromosome lengths
-
-2. Chromosome lengths for ZANU are:
-
-X: 27238055
-
-2: 114783175
-
-3: 97973315
-
-3. You have data table with results of gene mapping between two species:
+```{r}
+library(RIdeogram)
+library(stringr)
+```
 
 ```{r}
-str(read.csv('gene_mapping.tsv', sep='\t'))
+dg <- read.csv("DONGOLA_genes.tsv", sep='\t')
+zg <- read.csv("ZANU_genes.tsv", sep='\t')
+gm <- read.csv("gene_mapping.tsv", sep='\t')
+
+#procesing DONG string and removing excessive info
+gm <- cbind(gm,str_split_fixed(gm$DONG, "[,]", 5))
+colnames(gm) <- seq(1:12)
+gm <- gm[,-which(names(gm) %in% c("4","5","6","7","12"))]
+
+colnames(gm) <- c('Zchr','Zmid','Zstrand','Dchr','Dmid','Dstrand','Dlen')
+head(gm)
 ```
-column description:
 
-* contig: chromosome name in ZANU
-
-* middle.position: position of gene center in ZANU chromosome coordinate
-
-* strand: direction of gene in relation to chromosome scaffold direction
-
-* ord: just an index of record
-
-* name: gene name in ZANU
-
-* ref.genes: how many genes are homologus to this one from ZANU
-
-* DONG: complex string for DONGOLA gene(s) information separated by "," for one gene
-and ";" between genes
-
-For one gene this complex string has structure:
-  
-  ** sequence_id - id from NCBI where is this gene in DONGOLA genome (not only chromosomes here)
-  
-  ** middle coordinate of the gene
-  
-  ** strand
-  
-  ** length of the gene
-  
-  ** gene name from DONGOLA annotation
-  
-4. You have two tables that describe genes for ZANU and DONGOLA:
 
 ```{r}
-str(read.csv("DONGOLA_genes.tsv", sep='\t'))
+karyotype_ZANU <- data.frame(
+  c('X', 2, 3),
+  c(1, 1, 1),
+  c(27238055, 114783175, 97973315),
+  c(229926, 969696, 969696),
+  c('ZANU', 'ZANU', 'ZANU'),
+  c(12, 12, 12),
+  c(252525, 252525, 252525))
+colnames(karyotype_ZANU) <- c('Chr','Start','End','fill','species','size','color')
+
+karyotype_DONGOLA <- data.frame(
+  c('X', 2, 3),
+  c(1, 1, 1),
+  c(26913133, 111988354, 95710210),
+  c(229926, 969696, 969696),
+  c('DONGOLA', 'DONGOLA', 'DONGOLA'),
+  c(12, 12, 12),
+  c(252525, 252525, 252525))
+colnames(karyotype_DONGOLA) <- c('Chr','Start','End','fill','species','size','color')
+
+karyotype_dual_comparison <- rbind(karyotype_ZANU, karyotype_DONGOLA)
+head(karyotype_dual_comparison)
+
 ```
-two tables ZANU_genes.tsv and DONGOLA_genes.tsv have the same structure:
 
-* ID: gene_name in species annotation
+```{r}
+gm[gm$Dchr == 'NC_053517.1', ]['Dchr'] = '2'
+gm[gm$Dchr == 'NC_053518.1', ]['Dchr'] = '3'
+gm[gm$Dchr == 'NC_053519.1', ]['Dchr'] = 'X'
 
-* start: gene start coordinate in chromosome coordinate system
+#choosing only X, 2, 3
+gm <- subset(gm, gm$Dchr %in% c('2', '3', 'X'))
+gm <- subset(gm, gm$Zchr %in% c('2', '3', 'X'))
+gm[gm$Dchr == 'X', ]['Dchr'] = '1'
+gm[gm$Zchr == 'X', ]['Zchr'] = '1'
+gm <- gm[gm$Zchr == gm$Dchr,]
+gm$Dlen <- as.integer(gm$Dlen)
+gm$Dmid <- as.integer(gm$Dmid)
+gm$Dstrand <- as.integer(gm$Dstrand)
+head(gm)
 
-* end: gene end coordinate
+```
+```{r}
+#reversing 2 and 3
+for(i in 1:nrow(gm)){
+  row <- gm[i, ]
+  if (row$Zchr == 2){
+    gm[i, 'ZmidReverse'] <- 114783175 - row$Zmid
+  }
+  else if (row$Zchr == 3){
+    gm[i, 'ZmidReverse'] <- 97973315 -row$Zmid
+  }
+  else {
+    gm[i, 'ZmidReverse'] <- row$Zmid
+  }
+}
 
-* strand: gene direction in relation with chromosomal scaffold direction
+gm$chr1 <- as.numeric(gm$Zchr)
+gm$str1 <- as.integer(gm$ZmidReverse - gm$Dlen/2)
+gm$end1 <- as.integer(gm$ZmidReverse + gm$Dlen/2)
+gm$chr2 <- as.numeric(gm$Dchr)
+gm$str2 <- as.integer(gm$Dmid - gm$Dlen/2)
+gm$end2 <- as.integer(gm$Dmid + gm$Dlen/2)
 
-All of these information will be enough to construct synteny using RIdeogram
+#coloring
+for(i in 1:nrow(gm)){
+  row <- gm[i, ]
+  gm[i, 'fill'] <- ifelse(row$Zstrand == row$Dstrand, 'D88974', '74D87A')
+}
+gm <- gm[,-which(names(gm) %in% c('Zchr','Zmid','Zstrand','Dchr','Dmid','Dstrand','Dlen','ZmidReverse'))]
+head(gm)
+```
 
-## Result needed:
+```{r eval=FALSE}
+ideogram(karyotype = karyotype_dual_comparison, synteny = gm)
+convertSVG("chromosome.svg", device = "png")
 
-.png file with synteny between ZANU and DONGOLA X, 2, and 3 chromosomes. 
+```
 
-You should visualize only genes that maps only between the same chromosomes:
-X-X, 2-2, 3-3
 
-Genes with the same direction and genes that change direction between genomes must be colored differently. That allows us to see borders of inversions.
 
-Task with * (additional complexity)
-
-If there are multiple DONGOLA genes for one ZANU gene you can take only one which
-coordinates are closest.
 
 
