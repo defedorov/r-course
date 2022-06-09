@@ -1,75 +1,116 @@
 ---
-title: "HW2"
+author: "Denis Fedorov"
+title: "HW 2"
 output:
   pdf_document: default
   html_notebook: default
+  html_document:
+    df_print: paged
 ---
-
 ## Black Jack probabilities
 
 Dear students in your second homework I want you to model Black Jack classic card game.
 
-You can read rules here: https://www.officialgamerules.org/blackjack
-
-Goals of this HW is to train your skills of using r-base objects and to remind the basics of probability theory.
-
-We have a csv file with a classic 52 card deck:
-
 ```{r}
-deck <- read.csv('deck.csv')
-head(deck)
+deck <- read.csv("deck.csv")
+
+origdeck <- deck[rep(seq_len(nrow(deck)), 4), ] #replicate 4 times
 ```
 
-I want you to model a game with shown percentage of winning.
+### Functions
 
-Assume that casino has 4 full decks (208 cards).
+```{r}
+shuffle_deck <- function() { 
+  deck <<- origdeck[sample(1:nrow(origdeck)),]
+}
 
-Game starts when dealer shuffle all cards and give 2 card for you and 2 for himself.
+state <- function() {
+  dealerSum <<- sum(dealer$value)
+  cat("Dealer's hand:", fill = T)
+  for (i in as.list(as.data.frame(t(dealer)))){
+    cat("\t", i,"\n")
+  }
+  cat("sum", dealerSum, fill = T)
+  cat("\n")
+  
+  youSum <<- sum(you$value)
+  cat("Your hand:", fill = T)
+  for (i in as.list(as.data.frame(t(you)))){
+    cat("\t", i,"\n")
+  }
+  cat("sum", youSum, fill = T)
+  cat("\n")
+  
+  if (youSum > 21) {
+    cat("chances 0%")
+    } 
+  else if (dealerSum <= youSum) {
+    cat("chances 100%")
+    } 
+  else {
+    probab <<- sum(deck$value <= 21-youSum & deck$value >= dealerSum-youSum)/nrow(deck)
+    cat("chances ", 100*probab, "%", sep="")
+  }
+  cat("\n--------------------\n\n\n")
+    
+}
 
-To simplify task dealer will always have 2 cards and only you can get additional cards.
-Second thing lets assume that Ace has always 1 point.
+start_game <- function() {
+  deck <- shuffle_deck()
+  
+  dealer <<- deck[c(1,2),]
+  deck <- deck[-c(1,2),]
+  you <<- deck[c(1,2),]
+  deck <<- deck[-c(1,2),]
+  state()
+}
 
-You win if your card sum is more or equal than dealers card sum.
+deal <- function() {
+  you <<- rbind(you, deck[1,])
+  deck <<- deck[-1,]
+  state()
+}
 
-If your card sum more than 21 you loose.
-
-each turn I want you to print these game state:
-
-> Dealers hand:
-
->    king spades 10
-
->    seven hearts 7
-
->    sum 17
-
->
-
-> Your hand:
-
->    king spades 10
-
->    two hearts 2
-
->    six spades 6
-
->    sum 18
-
->
-
-> chances 100%
+stop_game <- function() {
+  if (dealerSum <= youSum && youSum < 21) {
+    cat(">>>Win<<<")
+  }
+  else {
+    cat(">>>Loose<<<")
+  }
+}
+```
 
 
-So you need to:
+### Example 1
 
-* create suitable objects for casino deck, dealer hand, and your hand.
+```{r}
+start_game()
 
-* implement shuffle_deck() function
+deal()
 
-* implement start_game() function that shuffles deck, deals 2 cards for you and dealer. and prints state
+stop_game()
+```
 
-* implement deal() function that deals you a card and prints state
+### Example 2
 
-* implement stop_game() function that prints result: win or loose
+```{r}
+start_game()
 
-After implementation please show two examples of working game and knit rmd to .pdf
+while (youSum < dealerSum && youSum <= 21 && probab > 0.3){
+  deal()
+}
+stop_game()
+```
+
+### Example 3
+
+```{r}
+start_game()
+
+for (i in 1:3){
+  deal()
+}
+
+stop_game()
+```
